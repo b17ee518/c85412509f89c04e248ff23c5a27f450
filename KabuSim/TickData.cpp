@@ -23,7 +23,7 @@ bool TickDataBase::isNull() const
 	return true;
 }
 
-void TickDataBase::setValues(int begin, int end, int high, int low, int am, int lKey)
+void TickDataBase::setValues(double begin, double end, double high, double low, int am, int lKey)
 {
 	lowPrice = low;
 	highPrice = high;
@@ -399,4 +399,85 @@ MonthTickData& MaxTickData::getMonthTickAdditional(int t)
 		addMonthTick(t, data);
 	}
 	return ticks[t];
+}
+
+void MaxTickData::CalculateMACD()
+{
+	int count = 0;
+	double tempShortAddVal = 0.0;
+	double tempLongAddVal = 0.0;
+	double tempSignalAddVal = 0.0;
+	double prevShortVal = 0.0;
+	double prevLongVal = 0.0;
+	double prevSignalVal = 0.0;
+	double thisShortVal = 0.0;
+	double thisLongVal = 0.0;
+	double thisSignalVal = 0.0;
+
+	const int shortPeriod = 12;
+	const int longPeriod = 26;
+	const int signalPeriod = 9;
+
+	for (auto& monthdata : ticks)
+	{
+		for (auto& daydata : monthdata.ticks)
+		{
+			for (auto& fivemindata : daydata.ticks)
+			{
+				count++;
+
+				// short
+				if (count <= shortPeriod)
+				{
+					tempShortAddVal += fivemindata.endPrice;
+					if (count == shortPeriod)
+					{
+						thisShortVal = prevShortVal = tempShortAddVal / shortPeriod;
+					}
+				}
+				else
+				{
+					thisShortVal = prevShortVal * (1.0 - 2.0 / (1.0 + shortPeriod)) + fivemindata.endPrice * (2.0 / (1.0 + shortPeriod));
+					prevShortVal = thisShortVal;
+				}
+
+				// long
+				if (count <= longPeriod)
+				{
+					tempLongAddVal += fivemindata.endPrice;
+					if (count == longPeriod)
+					{
+						thisLongVal = prevLongVal = tempLongAddVal / longPeriod;
+					}
+				}
+				else
+				{
+					thisLongVal = prevLongVal * (1.0 - 2.0 / (1.0 + longPeriod)) + fivemindata.endPrice * (2.0 / (1.0 + longPeriod));
+					prevLongVal = thisLongVal;
+
+					fivemindata.macd = thisShortVal - thisLongVal;
+				}
+
+				// signal
+				if (count >= longPeriod)
+				{
+					if (count <= longPeriod + signalPeriod)
+					{
+						tempSignalAddVal += fivemindata.macd;
+						if (count == longPeriod + signalPeriod)
+						{
+							thisSignalVal = prevSignalVal = tempSignalAddVal / signalPeriod;
+						}
+					}
+					else
+					{
+						thisSignalVal = prevSignalVal * (1.0 - 2.0 / (1.0 + signalPeriod)) + fivemindata.macd * (2.0 / (1.0 + signalPeriod));
+						prevSignalVal = thisSignalVal;
+
+						fivemindata.macdSignal = thisSignalVal;
+					}
+				}
+			}
+		}
+	}
 }

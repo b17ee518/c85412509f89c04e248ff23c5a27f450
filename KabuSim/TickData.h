@@ -21,10 +21,10 @@ public:
 	TickDataBase(){}
 	virtual ~TickDataBase(){}
 
-	int beginPrice = -1;
-	int endPrice = -1;
-	int highPrice = -1;
-	int lowPrice = std::numeric_limits<int>::max();
+	double beginPrice = -1;
+	double endPrice = -1;
+	double highPrice = -1;
+	double lowPrice = std::numeric_limits<int>::max();
 	int amount = 0;
 
 	int largerKey = 0;
@@ -35,7 +35,7 @@ public:
 
 	bool isNull() const;
 
-	void setValues(int begin, int end, int high, int low, int am, int lKey);
+	void setValues(double begin, double end, double high, double low, int am, int lKey);
 	void CopyFromTickDataBase(const TickDataBase& tickdatabase);
 
 	virtual TickDataBase& operator=(const TickDataBase& right)
@@ -48,6 +48,9 @@ public:
 		largerKey = right.largerKey;
 		return *this;
 	}
+
+	double macd = 0;
+	double macdSignal = 0;
 };
 
 class SecondTickData;
@@ -179,4 +182,6 @@ public:
 	QMap<int, MonthTickData> ticks;
 	void addMonthTick(int month, const MonthTickData& tick);	// month index from 2000
 	MonthTickData& getMonthTickAdditional(int month);
+
+	void CalculateMACD(); // only for fivemin
 };

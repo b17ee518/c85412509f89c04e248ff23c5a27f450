@@ -7,6 +7,12 @@
 #include "TickData.h"
 #include "Defines.h"
 
+enum class ValueDataType
+{
+	NikkeiHeikin,
+	Sakimono,
+};
+
 class SBIDataParser
 {
 public:
@@ -27,10 +33,15 @@ public:
 	bool parseFile(const QString& filename);
 	bool parseAllFiles(const QString& path, const QString& filenameBase);
 
-	void addTick(const QDateTime& dt, TickType ttype, const TickDataBase& data);
+	void addTick(const QDateTime& dt, TickType ttype, const TickDataBase& data, MaxTickData* pMasterData);
 
 	int getMonthCountFromDateTime(const QDateTime& dt);
 	int getFiveMinuteCountFromDateTime(const QDateTime& dt);
+
+	bool readFromTableData(const QString& filename, ValueDataType vdt);
+	bool readFromAllTableData(const QString& path, const QString& filenameBase, ValueDataType vdt);
+
+	void preHeat(const QDateTime& dtBegin, const QDateTime& dtEnd,  ValueDataType vdt, TickType ttype);
 
 	MaxTickData masterTicks;
 	MaxTickData masterNikkeiTicks;

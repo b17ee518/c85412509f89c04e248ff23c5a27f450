@@ -14,6 +14,7 @@ SBIDataParser::~SBIDataParser()
 
 bool SBIDataParser::parseData(const QByteArray& data)
 {
+	MaxTickData* pMasterData = &masterTicks;
 	// data
 	if (!data.size())
 	{
@@ -120,13 +121,13 @@ bool SBIDataParser::parseData(const QByteArray& data)
 				QDateTime dt;
 
 				// begin
-				int beginPrice = rawData.mid(0x21, 0x0b).toInt();
+				double beginPrice = rawData.mid(0x21, 0x0b).toDouble();
 				// high
-				int highPrice = rawData.mid(0x21 + 0x0b, 0x0b).toInt();
+				double highPrice = rawData.mid(0x21 + 0x0b, 0x0b).toDouble();
 				// low
-				int lowPrice = rawData.mid(0x21 + 0x0b * 2, 0x0b).toInt();
+				double lowPrice = rawData.mid(0x21 + 0x0b * 2, 0x0b).toDouble();
 				// end
-				int endPrice = rawData.mid(0x21 + 0x0b * 3, 0x0b).toInt();
+				double endPrice = rawData.mid(0x21 + 0x0b * 3, 0x0b).toDouble();
 
 				TickDataBase tickdata;
 				tickdata.setValues(beginPrice, endPrice, highPrice, lowPrice, amount, 0);
@@ -134,31 +135,31 @@ bool SBIDataParser::parseData(const QByteArray& data)
 				{
 					// month
 					dt = QDateTime::fromString(dateTimeStr, "yyyyMMdd");
-					addTick(dt, TickType::Month, tickdata);
+					addTick(dt, TickType::Month, tickdata, pMasterData);
 				}
 				else if (dateTimeStr.length() == 8)
 				{
 					// day
 					dt = QDateTime::fromString(dateTimeStr, "yyyyMMddHH");
-					addTick(dt, TickType::Day, tickdata);
+					addTick(dt, TickType::Day, tickdata, pMasterData);
 				}
 				else if (dateTimeStr.length() == 12)
 				{
 					// minute
 					dt = QDateTime::fromString(dateTimeStr, "yyyyMMddHHmm");
-					addTick(dt, TickType::Minute, tickdata);
+					addTick(dt, TickType::Minute, tickdata, pMasterData);
 				}
 				else if (dateTimeStr.length() == 14)
 				{
 					// second
 					dt = QDateTime::fromString(dateTimeStr, "yyyyMMddHHmmss");
-					addTick(dt, TickType::Second, tickdata);
+					addTick(dt, TickType::Second, tickdata, pMasterData);
 				}
 				else if (dateTimeStr.length() >= 16)
 				{
 					// second
 					dt = QDateTime::fromString(dateTimeStr, "yyyyMMddHHmmssfff");
-					addTick(dt, TickType::Millisecond, tickdata);
+					addTick(dt, TickType::Millisecond, tickdata, pMasterData);
 				}
 
 				//
@@ -216,8 +217,12 @@ bool SBIDataParser::parseAllFiles(const QString& path, const QString& filenameBa
 	return bRet;
 }
 
-void SBIDataParser::addTick(const QDateTime& dt, TickType ttype, const TickDataBase& data)
+void SBIDataParser::addTick(const QDateTime& dt, TickType ttype, const TickDataBase& data, MaxTickData* pMasterData)
 {
+	if (!pMasterData)
+	{
+		return;
+	}
 	if (ttype == TickType::Max)
 	{
 		return;
@@ -227,13 +232,13 @@ void SBIDataParser::addTick(const QDateTime& dt, TickType ttype, const TickDataB
 		int monthCount = getMonthCountFromDateTime(dt);
 		MonthTickData monthData = masterTicks.getMonthTickAdditional(monthCount);
 		monthData.CopyFromTickDataBase(data);
-		masterTicks.addMonthTick(monthCount, monthData);
+		pMasterData->addMonthTick(monthCount, monthData);
 	}
 	else if (ttype == TickType::Day)
 	{
 		int monthCount = getMonthCountFromDateTime(dt);
 		int dayCount = dt.date().day();
-		MonthTickData& monthData = masterTicks.getMonthTickAdditional(monthCount);
+		MonthTickData& monthData = pMasterData->getMonthTickAdditional(monthCount);
 		DayTickData dayData = monthData.getDayTickAdditional(dayCount);
 		dayData.CopyFromTickDataBase(data);
 		monthData.addDayTick(dayCount, dayData);
@@ -243,7 +248,7 @@ void SBIDataParser::addTick(const QDateTime& dt, TickType ttype, const TickDataB
 		int monthCount = getMonthCountFromDateTime(dt);
 		int dayCount = dt.date().day();
 		int fiveminCount = getFiveMinuteCountFromDateTime(dt);
-		MonthTickData& monthData = masterTicks.getMonthTickAdditional(monthCount);
+		MonthTickData& monthData = pMasterData->getMonthTickAdditional(monthCount);
 		DayTickData& dayData = monthData.getDayTickAdditional(dayCount);
 		FiveMinuteTickData fiveminData = dayData.getFiveMinuteTickAdditional(fiveminCount);
 		fiveminData.CopyFromTickDataBase(data);
@@ -255,7 +260,7 @@ void SBIDataParser::addTick(const QDateTime& dt, TickType ttype, const TickDataB
 		int dayCount = dt.date().day();
 		int fiveminCount = getFiveMinuteCountFromDateTime(dt);
 		int minCount = dt.time().minute() % 5;
-		MonthTickData& monthData = masterTicks.getMonthTickAdditional(monthCount);
+		MonthTickData& monthData = pMasterData->getMonthTickAdditional(monthCount);
 		DayTickData& dayData = monthData.getDayTickAdditional(dayCount);
 		FiveMinuteTickData& fiveminData = dayData.getFiveMinuteTickAdditional(fiveminCount);
 		MinuteTickData minData = fiveminData.getMinuteTickAdditional(minCount);
@@ -269,7 +274,7 @@ void SBIDataParser::addTick(const QDateTime& dt, TickType ttype, const TickDataB
 		int fiveminCount = getFiveMinuteCountFromDateTime(dt);
 		int minCount = dt.time().minute() % 5;
 		int secondCount = dt.time().second();
-		MonthTickData& monthData = masterTicks.getMonthTickAdditional(monthCount);
+		MonthTickData& monthData = pMasterData->getMonthTickAdditional(monthCount);
 		DayTickData& dayData = monthData.getDayTickAdditional(dayCount);
 		FiveMinuteTickData& fiveminData = dayData.getFiveMinuteTickAdditional(fiveminCount);
 		MinuteTickData& minData = fiveminData.getMinuteTickAdditional(minCount);
@@ -285,7 +290,7 @@ void SBIDataParser::addTick(const QDateTime& dt, TickType ttype, const TickDataB
 		int minCount = dt.time().minute() % 5;
 		int secondCount = dt.time().second();
 		int msCount = dt.time().msec();
-		MonthTickData& monthData = masterTicks.getMonthTickAdditional(monthCount);
+		MonthTickData& monthData = pMasterData->getMonthTickAdditional(monthCount);
 		DayTickData& dayData = monthData.getDayTickAdditional(dayCount);
 		FiveMinuteTickData& fiveminData = dayData.getFiveMinuteTickAdditional(fiveminCount);
 		MinuteTickData& minData = fiveminData.getMinuteTickAdditional(minCount);
@@ -319,6 +324,135 @@ int SBIDataParser::getFiveMinuteCountFromDateTime(const QDateTime& dt)
 		return fivemin;
 	}
 	return 0;
+}
+
+bool SBIDataParser::readFromTableData(const QString& filename, ValueDataType vdt)
+{
+	QFile file(filename);
+	if (!file.open(QIODevice::ReadOnly))
+	{
+		return false;
+	}
+
+	TickType tickType = TickType::Minute;
+	if (filename.contains("_5min"))
+	{
+		tickType = TickType::FiveMinutes;
+	}
+	else if (filename.contains("_sec"))
+	{
+		tickType = TickType::Second;
+	}
+	else if (filename.contains("_day"))
+	{
+		tickType = TickType::Day;
+	}
+	else if (filename.contains("_month"))
+	{
+		tickType = TickType::Month;
+	}
+
+	QByteArray linedata;
+	file.readLine(); // skip first line
+
+	MaxTickData * pMaster = &masterTicks;
+	bool bNoAmount = false;
+	if (vdt == ValueDataType::NikkeiHeikin)
+	{
+		pMaster = &masterNikkeiTicks;
+		bNoAmount = true;
+	}
+
+	while (!file.atEnd())
+	{
+		linedata = file.readLine().trimmed();
+
+		QList<QByteArray> splited = linedata.split('\t');
+
+		if (splited.size() < 6)
+		{
+			return false;
+		}
+		if (!bNoAmount && splited.size() < 7)
+		{
+			return false;
+		}
+		QString dateTimeStr = splited[0] + " " + splited[1];
+		QDateTime dt = QDateTime::fromString(dateTimeStr, "yyyy/M/d H:m:s");
+		if (!dt.isValid())
+		{
+			dt = QDateTime::fromString(dateTimeStr, "yyyy/M/d H:m");
+		}
+		if (!dt.isValid())
+		{
+			return false;
+		}
+
+		double beginVal = splited[2].toDouble();
+		double highVal = splited[3].toDouble();
+		double lowVal = splited[4].toDouble();
+		double endVal = splited[5].toDouble();
+
+		int amount = 0;
+		if (!bNoAmount)
+		{
+			amount = splited[6].toDouble();
+		}
+		
+		TickData data;
+		data.setValues(beginVal, endVal, highVal, lowVal, amount, 0);
+		addTick(dt, tickType, data, pMaster);
+	}
+}
+
+bool SBIDataParser::readFromAllTableData(const QString& path, const QString& filenameBase, ValueDataType vdt)
+{
+	QDirIterator it(path, QStringList() << filenameBase, QDir::Files, QDirIterator::Subdirectories);
+	bool bRet = false;
+	while (it.hasNext()) {
+		if (!readFromTableData(it.next(), vdt))
+		{
+			//			return false;
+		}
+		else
+		{
+			bRet = true;
+		}
+	}
+	return bRet;
+}
+
+void SBIDataParser::preHeat(const QDateTime& dtBegin, const QDateTime& dtEnd, ValueDataType vdt, TickType ttype)
+{
+	MaxTickData* pMasterData = &masterTicks;
+	if (vdt == ValueDataType::NikkeiHeikin)
+	{
+		pMasterData = &masterNikkeiTicks;
+	}
+
+
+	int monthBegin = getMonthCountFromDateTime(dtBegin);
+	int monthEnd = getMonthCountFromDateTime(dtEnd);
+
+	for (int i = monthBegin; i <= monthEnd; i++)
+	{
+		pMasterData->ticks.insert(i, MonthTickData());
+		if (ttype >= TickType::Day)
+		{
+			for (int j = 1; j <= 31; j++)
+			{
+				pMasterData->ticks[i].ticks.insert(j, DayTickData());
+				for (int k = 0; k < 288; k++)
+				{
+					pMasterData->ticks[i].ticks[j].ticks.insert(k, FiveMinuteTickData());
+					for (int l = 0; l < 5; l++)
+					{
+						pMasterData->ticks[i].ticks[j].ticks[k].ticks.insert(l, MinuteTickData());
+					}
+				}
+			}
+		}
+	}
 }
 
 void SBIDataParser::exportMasterToFiles(const QString& path)
@@ -431,6 +565,10 @@ void SBIDataParser::exportMasterToFiles(const QString& path)
 					<< fivemin.endPrice
 					<< "\t"
 					<< fivemin.amount
+					<< "\t"
+					<< fivemin.macd
+					<< "\t"
+					<< fivemin.macdSignal
 					<< endl;
 				Q_FOREACH(auto& min, fivemin.ticks)
 				{
