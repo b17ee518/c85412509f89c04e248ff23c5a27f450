@@ -55,3 +55,4 @@ KabuSim/Win32
 *.sdf
 *.suo
 sitelog
+*.opensdf
