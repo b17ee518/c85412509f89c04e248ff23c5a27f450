@@ -437,7 +437,7 @@ void MaxTickData::CalculateMACD()
 				}
 				else
 				{
-					thisShortVal = prevShortVal * (1.0 - 2.0 / (1.0 + shortPeriod)) + fivemindata.endPrice * (2.0 / (1.0 + shortPeriod));
+					thisShortVal = prevShortVal + (fivemindata.endPrice - prevShortVal) * 2.0 / (1.0 + shortPeriod);
 					prevShortVal = thisShortVal;
 				}
 
@@ -452,26 +452,30 @@ void MaxTickData::CalculateMACD()
 				}
 				else
 				{
-					thisLongVal = prevLongVal * (1.0 - 2.0 / (1.0 + longPeriod)) + fivemindata.endPrice * (2.0 / (1.0 + longPeriod));
+					thisLongVal = prevLongVal + (fivemindata.endPrice - prevLongVal) * 2.0 / (1.0 + longPeriod);
 					prevLongVal = thisLongVal;
 
+				}
+
+				if (count >= longPeriod)
+				{
 					fivemindata.macd = thisShortVal - thisLongVal;
 				}
 
 				// signal
 				if (count >= longPeriod)
 				{
-					if (count <= longPeriod + signalPeriod)
+					if (count <= longPeriod + signalPeriod-1)
 					{
 						tempSignalAddVal += fivemindata.macd;
-						if (count == longPeriod + signalPeriod)
+						if (count == longPeriod + signalPeriod-1)
 						{
 							thisSignalVal = prevSignalVal = tempSignalAddVal / signalPeriod;
 						}
 					}
 					else
 					{
-						thisSignalVal = prevSignalVal * (1.0 - 2.0 / (1.0 + signalPeriod)) + fivemindata.macd * (2.0 / (1.0 + signalPeriod));
+						thisSignalVal = prevSignalVal + (fivemindata.macd - prevSignalVal) * 2.0 / (1.0 + signalPeriod);
 						prevSignalVal = thisSignalVal;
 
 						fivemindata.macdSignal = thisSignalVal;
