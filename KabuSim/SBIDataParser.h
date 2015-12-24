@@ -33,9 +33,14 @@ public:
 	int getFiveMinuteCountFromDateTime(const QDateTime& dt);
 
 	MaxTickData masterTicks;
+	MaxTickData masterNikkeiTicks;
 
 	void exportMasterToFiles(const QString& path);
 
 private:
 	QByteArray _remainingChunk;
+	int _endIndex = 0;
+	int _deadIndex = 0;
+	int _dataLength = 0;
+	QString _flag;
 };

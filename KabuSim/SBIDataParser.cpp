@@ -24,66 +24,88 @@ bool SBIDataParser::parseData(const QByteArray& data)
 		// ended
 		return true;
 	}
-	if (data[0] == 0x02)
+	if (data[0] == 0x02 || _remainingChunk.size())
 	{
-		if (data.size() < 0x32)
+		QByteArray thisChunk;
+		bool bContinue = true;
+		if (data[0] == 0x02)
 		{
-			return false;
+			bContinue = false;
+			if (data.size() < 0x32)
+			{
+				return false;
+			}
+			_dataLength = data.mid(1, 8).toInt();
+			if (data.size() < 8 + _dataLength)
+			{
+				return false;
+			}
+
+			_endIndex = data.indexOf('\03', 8 + _dataLength);
+			if (_endIndex < 0)
+			{
+				_deadIndex = data.indexOf('\03');
+				_endIndex = _deadIndex;
+			}
+			thisChunk = data.left(_endIndex + 1);
 		}
-		int dataLength = data.mid(1, 8).toInt();
-		if (data.size() < 8+dataLength)
+		else
 		{
-			return false;
+			thisChunk = data.left(_dataLength + 8 - _deadIndex + 1);
 		}
 
-		int endIndex = data.indexOf('\03', 8 + dataLength);
-		if (endIndex < 0)
-		{
-			return false;
-		}
-
-		QByteArray thisChunk = data.left(endIndex+1);
 
 		bool bRet = false;
 		// parse this full chunck
 
 		// DLT/ flag
-		QString flag = thisChunk.mid(0x0b, 0x12 - 0x0b);
-		if (flag.startsWith("DLT1825"))
+		if (!bContinue)
+		{
+			_flag = thisChunk.mid(0x0b, 0x12 - 0x0b);
+		}
+		if (_flag.startsWith("DLT1825"))
 		{
 			// macro data
 			bRet = true;
 		}
-		else if (flag.startsWith("AL"))
+		else if (_flag.startsWith("AL"))
 		{
 			// ping data
 			bRet = true;
 		}
 
-		else if (flag.startsWith("DFT1508") || flag.startsWith("DMT1508") || flag.startsWith("DLT1508"))
+		else if (_flag.startsWith("DFT1508") || _flag.startsWith("DMT1508") || _flag.startsWith("DLT1508"))
 		{
-			bool isFirstPart = flag.startsWith("DFT");
-			if (isFirstPart)
+			bool isFirstPart = _flag.startsWith("DFT");
+			if (isFirstPart && !bContinue)
 			{
 				_remainingChunk.clear();
 			}
-			bool isLastPart = flag.startsWith("DLT");
+			bool isLastPart = _flag.startsWith("DLT");
 
-			int headerSize = 0x014c;
-			if (!isFirstPart)
+			QByteArray rawData;
+			if (!bContinue)
 			{
-				headerSize = 0x00c9;
-			}
+				int headerSize = 0x014c;
+				if (!isFirstPart)
+				{
+					headerSize = 0x00c9;
+				}
 
-			if (data.size() < headerSize)
-			{
-				return false;
+				if (data.size() < headerSize)
+				{
+					return false;
+				}
+				if (isLastPart)
+				{
+					thisChunk = thisChunk.left(thisChunk.length() - 0x2c);
+				}
+				rawData = thisChunk.right(thisChunk.length() - headerSize);
 			}
-			if (isLastPart)
+			else
 			{
-				thisChunk = thisChunk.left(thisChunk.length() - 0x2c);
+				rawData = thisChunk;
 			}
-			QByteArray rawData = thisChunk.right(thisChunk.length() - headerSize);
 
 			if (_remainingChunk.size())
 			{
@@ -152,7 +174,7 @@ bool SBIDataParser::parseData(const QByteArray& data)
 			}
 		}
 
-		QByteArray nextChunk = data.right(data.length() - endIndex - 1);
+		QByteArray nextChunk = data.right(data.length() - _endIndex - 1);
 		if (nextChunk.size() >= 0x32)
 		{
 			return parseData(nextChunk);
@@ -182,9 +204,9 @@ bool SBIDataParser::parseAllFiles(const QString& path, const QString& filenameBa
 	QDirIterator it(path, QStringList() << filenameBase, QDir::Files, QDirIterator::Subdirectories);
 	bool bRet = false;
 	while (it.hasNext()) {
-		if (!parseFile(it.filePath()))
+		if (!parseFile(it.next()))
 		{
-			return false;
+//			return false;
 		}
 		else
 		{

@@ -248,9 +248,6 @@ endlocal
     <ClInclude Include="SBIDataParser.h" />
     <ClInclude Include="TickData.h" />
   </ItemGroup>
-  <ItemGroup>
-    <ResourceCompile Include="KabuSim.rc" />
-  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets" />
   <ProjectExtensions>

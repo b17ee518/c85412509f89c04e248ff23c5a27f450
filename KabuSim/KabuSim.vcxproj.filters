@@ -147,7 +147,4 @@
       <Filter>Class</Filter>
     </ClInclude>
   </ItemGroup>
-  <ItemGroup>
-    <ResourceCompile Include="KabuSim.rc" />
-  </ItemGroup>
 </Project>
